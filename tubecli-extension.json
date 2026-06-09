@@ -1,0 +1,32 @@
+{
+    "name":  "subtitle_extractor",
+    "display_name":  "Subtitle Extractor",
+    "version":  "2026.06.09.102310",
+    "description":  "AI Subtitle Extraction — Whisper Local, Gemini Cloud, YouTube CC",
+    "author":  "TubeCreate",
+    "entry":  "extension.py",
+    "extension_class":  "SubtitleExtractorExtension",
+    "icon":  "📝",
+    "dependencies":  [
+                         "openai-whisper",
+                         "yt-dlp"
+                     ],
+    "nodes":  [
+                  "subtitle_extract"
+              ],
+    "skill_md":  "SKILL.md",
+    "ui_static":  "static",
+    "api_prefix":  "/api/v1/subtitle",
+    "page_url":  "/subtitle-extractor",
+    "min_tubecli_version":  "0.3.0",
+    "category":  "extension",
+    "tags":  [
+                 "subtitle",
+                 "whisper",
+                 "gemini",
+                 "srt",
+                 "caption",
+                 "phụ đề"
+             ],
+    "license":  "MIT"
+}

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subtitle Extractor — TubeCLI</title>
+    <link rel="stylesheet" href="/subtitle-extractor-static/subtitle.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ═══ Nav Bar ═══ -->
+    <nav class="navbar">
+        <div class="nav-left">
+            <a href="/dashboard" class="nav-back" id="btn-back">← <span data-i18n="nav.back">Back</span></a>
+            <h1 class="nav-title">📝 <span data-i18n="nav.title">Subtitle Extractor</span></h1>
+        </div>
+        <div class="nav-right">
+            <div class="lang-switcher">
+                <button class="lang-btn active" data-lang="en">EN</button>
+                <button class="lang-btn" data-lang="vi">VI</button>
+                <button class="lang-btn" data-lang="zh">中</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ═══ Main Layout ═══ -->
+    <main class="main-grid">
+        <!-- ── Sidebar: Settings ── -->
+        <aside class="sidebar">
+            <!-- Engine Selection -->
+            <section class="card">
+                <h3 class="card-title" data-i18n="engine.label">Engine</h3>
+                <div class="engine-options">
+                    <label class="engine-card active" data-engine="whisper">
+                        <input type="radio" name="engine" value="whisper" checked>
+                        <div class="engine-icon">🧠</div>
+                        <div class="engine-info">
+                            <span class="engine-name" data-i18n="engine.whisper">Whisper</span>
+                            <small data-i18n="engine.whisper_desc">Offline, free</small>
+                        </div>
+                    </label>
+                    <label class="engine-card" data-engine="gemini">
+                        <input type="radio" name="engine" value="gemini">
+                        <div class="engine-icon">✨</div>
+                        <div class="engine-info">
+                            <span class="engine-name" data-i18n="engine.gemini">Gemini</span>
+                            <small data-i18n="engine.gemini_desc">Cloud, fast</small>
+                        </div>
+                    </label>
+                    <label class="engine-card" data-engine="youtube">
+                        <input type="radio" name="engine" value="youtube">
+                        <div class="engine-icon">▶️</div>
+                        <div class="engine-info">
+                            <span class="engine-name" data-i18n="engine.youtube">YouTube CC</span>
+                            <small data-i18n="engine.youtube_desc">Download CC</small>
+                        </div>
+                    </label>
+                </div>
+            </section>
+
+            <!-- Input -->
+            <section class="card">
+                <h3 class="card-title" data-i18n="input.label">Input</h3>
+                <div id="upload-zone" class="upload-zone">
+                    <div class="upload-icon">📁</div>
+                    <span data-i18n="input.drop">Drop files here</span>
+                    <input type="file" id="file-input" accept="video/*,audio/*,.srt" hidden>
+                </div>
+                <div id="file-info" class="file-info" style="display:none">
+                    <span id="file-info-text"></span>
+                    <button id="btn-remove-file" class="btn-remove-file" title="Remove file">✕</button>
+                </div>
+
+                <div id="youtube-input" class="mt-12" style="display:none">
+                    <label class="label" data-i18n="input.url">YouTube URL</label>
+                    <input type="text" id="youtube-url" class="input" data-i18n-placeholder="input.url_placeholder">
+                </div>
+            </section>
+
+            <!-- Settings -->
+            <section class="card">
+                <h3 class="card-title">⚙️ Settings</h3>
+                <div class="form-row">
+                    <label class="label" data-i18n="settings.language">Language</label>
+                    <select id="select-lang" class="input">
+                        <option value="" data-i18n="settings.auto_detect">Auto</option>
+                        <option value="en">English</option>
+                        <option value="vi">Tiếng Việt</option>
+                        <option value="zh">中文</option>
+                        <option value="ja">日本語</option>
+                        <option value="ko">한국어</option>
+                        <option value="es">Español</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>
+                <div class="form-row" id="translate-row">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="chk-translate">
+                        <span data-i18n="settings.translate">Translate</span>
+                    </label>
+                    <select id="select-translate-to" class="input" style="display:none">
+                        <option value="English">English</option>
+                        <option value="Vietnamese">Tiếng Việt</option>
+                        <option value="Chinese">中文</option>
+                        <option value="Japanese">日本語</option>
+                    </select>
+                </div>
+
+                <button id="btn-extract" class="btn btn-primary btn-full" disabled>
+                    <span class="btn-icon">🚀</span>
+                    <span data-i18n="action.extract">Extract Subtitles</span>
+                </button>
+            </section>
+
+            <!-- Progress -->
+            <section id="progress-card" class="card" style="display:none">
+                <div class="progress-bar-container">
+                    <div id="progress-bar" class="progress-bar" style="width:0%"></div>
+                </div>
+                <div id="progress-text" class="progress-text"></div>
+            </section>
+        </aside>
+
+        <!-- ── Main Content ── -->
+        <div class="content">
+            <!-- Video Preview -->
+            <section class="card preview-card">
+                <h3 class="card-title" data-i18n="preview.title">Preview</h3>
+                <div class="video-container" id="video-container">
+                    <video id="video-player" controls></video>
+                    <div id="subtitle-overlay" class="subtitle-overlay"></div>
+                    <div id="preview-placeholder" class="preview-placeholder">
+                        <span class="preview-icon">🎬</span>
+                        <span data-i18n="preview.no_video">Upload a video to preview</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Subtitle Editor -->
+            <section class="card editor-card">
+                <div class="editor-header">
+                    <h3 class="card-title" data-i18n="editor.title">Subtitle Editor</h3>
+                    <div class="editor-actions">
+                        <button class="btn btn-sm" id="btn-add" title="Add subtitle">
+                            <span data-i18n="action.add">+ Add</span>
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-accent" id="btn-export">📥 Export ▾</button>
+                            <div class="dropdown-menu" id="export-menu">
+                                <button data-format="srt" data-i18n="action.export_srt">Export SRT</button>
+                                <button data-format="json" data-i18n="action.export_json">Export JSON</button>
+                                <button data-format="vtt" data-i18n="action.export_vtt">Export VTT</button>
+                                <button data-format="ass" data-i18n="action.export_ass">Export ASS</button>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm" id="btn-copy" data-i18n="action.copy">📋 Copy</button>
+                        <button class="btn btn-sm btn-danger" id="btn-burn" data-i18n="action.burn">🔥 Burn</button>
+                    </div>
+                </div>
+
+                <div class="subtitle-table-wrap">
+                    <table class="subtitle-table" id="subtitle-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="editor.index">#</th>
+                                <th data-i18n="editor.start">Start</th>
+                                <th data-i18n="editor.end">End</th>
+                                <th data-i18n="editor.text">Text</th>
+                                <th data-i18n="editor.actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subtitle-body"></tbody>
+                    </table>
+                    <div id="editor-empty" class="editor-empty">
+                        <span class="empty-icon">📝</span>
+                        <span data-i18n="editor.empty">No subtitles yet.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+        <span id="status-text" data-i18n="status.idle">Ready</span>
+        <span id="status-count"></span>
+    </footer>
+
+    <!-- ═══ Loading Overlay ═══ -->
+    <div id="loading-overlay" class="loading-overlay" style="display:none">
+        <div class="loading-card">
+            <div class="loading-spinner"></div>
+            <h3 id="loading-title" class="loading-title">Đang xử lý...</h3>
+            <div class="loading-progress-wrap">
+                <div class="loading-progress-track">
+                    <div id="loading-progress-bar" class="loading-progress-fill" style="width:0%"></div>
+                </div>
+                <span id="loading-pct" class="loading-pct">0%</span>
+            </div>
+            <p id="loading-detail" class="loading-detail">Đang tải file lên server...</p>
+        </div>
+    </div>
+
+    <script src="/subtitle-extractor-static/subtitle.js"></script>
+</body>
+</html>
