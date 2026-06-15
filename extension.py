@@ -41,32 +41,63 @@ class SubtitleExtractorExtension(Extension):
         """Register subtitle extraction skill for chatbot routing."""
         try:
             from tubecli.core.skill import skill_manager
+            from tubecli.config import get_language
+
             existing = skill_manager.find_by_name("Subtitle Extractor")
-            if existing:
-                logger.info("Subtitle Extractor skill already registered, skipping.")
-                return
-            
-            skill_manager.create(
-                name="Subtitle Extractor",
-                description="Tách phụ đề từ video/audio bằng Whisper AI, Gemini Cloud, hoặc YouTube CC. Hỗ trợ dịch thuật, export SRT/VTT/ASS, ghi sub vào video.",
-                skill_type="Extension Skill",
-                commands=[
+            lang = get_language()
+
+            if lang == "vi":
+                desc = "Tách phụ đề từ video/audio bằng Whisper AI, Gemini Cloud, hoặc YouTube CC. Hỗ trợ dịch thuật, export SRT/VTT/ASS, ghi sub vào video."
+                cmds = [
                     "tách sub", "tách phụ đề", "extract subtitle", "lấy sub",
                     "phụ đề", "subtitle", "caption", "transcribe",
-                ],
-                workflow_data={
-                    "extension": "subtitle_extractor",
-                    "action": "extract_subtitle",
-                    "sop": (
-                        "1. Nhận file video/audio hoặc URL YouTube\n"
-                        "2. Chọn engine: whisper (local), gemini (cloud), youtube (CC)\n"
-                        "3. Tách phụ đề → trả về SRT file\n"
-                        "4. Nếu yêu cầu, dịch sang ngôn ngữ khác\n"
-                        "5. Nếu yêu cầu, burn subtitle vào video bằng FFmpeg"
-                    ),
-                },
-            )
-            logger.info("✅ Subtitle Extractor skill registered successfully.")
+                ]
+                sop = (
+                    "1. Nhận file video/audio hoặc URL YouTube\n"
+                    "2. Chọn engine: whisper (local), gemini (cloud), youtube (CC)\n"
+                    "3. Tách phụ đề → trả về SRT file\n"
+                    "4. Nếu yêu cầu, dịch sang ngôn ngữ khác\n"
+                    "5. Nếu yêu cầu, burn subtitle vào video bằng FFmpeg"
+                )
+            else:
+                desc = "Extract subtitles from video/audio using Whisper AI, Gemini Cloud, or YouTube CC. Supports translation, SRT/VTT/ASS export, and burning subtitles to video."
+                cmds = [
+                    "extract subtitle", "get sub", "transcribe video", "transcribe audio",
+                    "subtitle", "caption", "transcribe", "generate srt",
+                ]
+                sop = (
+                    "1. Receive a video/audio file or YouTube URL\n"
+                    "2. Choose engine: whisper (local), gemini (cloud), youtube (CC)\n"
+                    "3. Extract subtitles → return SRT file\n"
+                    "4. If requested, translate to another language\n"
+                    "5. If requested, burn subtitles into video using FFmpeg"
+                )
+
+            if not existing:
+                skill_manager.create(
+                    name="Subtitle Extractor",
+                    description=desc,
+                    skill_type="Extension Skill",
+                    commands=cmds,
+                    workflow_data={
+                        "extension": "subtitle_extractor",
+                        "action": "extract_subtitle",
+                        "sop": sop,
+                    },
+                )
+                logger.info("✅ Subtitle Extractor skill registered successfully.")
+            else:
+                skill_manager.update(
+                    existing.id,
+                    description=desc,
+                    commands=cmds,
+                    workflow_data={
+                        "extension": "subtitle_extractor",
+                        "action": "extract_subtitle",
+                        "sop": sop,
+                    },
+                )
+                logger.info("⚡ Subtitle Extractor skill updated/synced.")
         except Exception as e:
             logger.warning(f"Could not register subtitle skill: {e}")
 
