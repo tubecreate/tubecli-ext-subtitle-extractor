@@ -473,6 +473,10 @@ body {
 .card { animation: fadeIn 0.3s ease; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 .status-processing { animation: pulse 1.5s infinite; }
+/* An error has to read as one. It used to get no class at all, so it
+   rendered in the same muted colour as idle text. */
+.status-error { color: #ef4444; font-weight: 600; }
+.status-success { color: #22c55e; font-weight: 600; }
 
 /* ═══ Loading Overlay ═══ */
 .loading-overlay {

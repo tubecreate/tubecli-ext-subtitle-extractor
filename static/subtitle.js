@@ -223,6 +223,10 @@
                     subtitles = data.subtitles || [];
                     renderSubtitles();
                     completeExtraction(subtitles.length);
+                    // Re-enable on the SUCCESS path too. Only the failure path
+                    // did it, so a YouTube CC run that worked left the Extract
+                    // button greyed out until the page was reloaded.
+                    els.btnExtract.disabled = false;
                 } else {
                     hideOverlay();
                     setStatus('error', data.message || 'Error');
@@ -290,6 +294,20 @@
             try {
                 _pollCount++;
                 const resp = await fetch(`${API_BASE}/status/${taskId}`);
+                // Stop on an HTTP error. The server answers 404 "Task not
+                // found" with a body of {"detail": ...} and no "status" key,
+                // so neither the success nor the error branch below could ever
+                // fire — the interval ran forever and left the user stuck
+                // behind a full-screen overlay that has no close button.
+                if (!resp.ok) {
+                    clearInterval(pollTimer);
+                    hideOverlay();
+                    let detail = '';
+                    try { detail = (await resp.json()).detail || ''; } catch (e) { /* not JSON */ }
+                    setStatus('error', detail || `Máy chủ trả lỗi ${resp.status} khi hỏi tiến độ.`);
+                    els.btnExtract.disabled = false;
+                    return;
+                }
                 const data = await resp.json();
 
                 if (data.total > 0 && data.total > 100) {
@@ -561,12 +579,19 @@
     }
 
     // ═══ Helpers ═══
+    // Rounded, not truncated, and it must match _format_srt_time on the
+    // server byte for byte. Math.floor((seconds % 1) * 1000) turned 1.4 into
+    // ,399 and 8.1 into ,099 because a binary float sits just under the value
+    // you typed — every cue landed up to a millisecond early.
     function formatTime(seconds) {
-        if (isNaN(seconds) || seconds < 0) return '00:00:00,000';
-        const h = Math.floor(seconds / 3600);
-        const m = Math.floor((seconds % 3600) / 60);
-        const s = Math.floor(seconds % 60);
-        const ms = Math.floor((seconds % 1) * 1000);
+        const v = Number(seconds);
+        if (!isFinite(v) || v < 0) return '00:00:00,000';
+        const totalMs = Math.round(v * 1000);
+        const ms = totalMs % 1000;
+        const totalS = Math.floor(totalMs / 1000);
+        const h = Math.floor(totalS / 3600);
+        const m = Math.floor((totalS % 3600) / 60);
+        const s = totalS % 60;
         return `${pad(h)}:${pad(m)}:${pad(s)},${pad3(ms)}`;
     }
 
@@ -585,6 +610,37 @@
         return subtitles.map((s, i) => `${i + 1}\n${formatTime(s.start)} --> ${formatTime(s.end)}\n${s.text}`).join('\n\n');
     }
 
+    // h:mm:ss.cc — ASS uses one-digit hours and CENTISECONDS, not the
+    // comma-and-milliseconds of SRT. Mirrors _to_ass() on the server so the
+    // two exports cannot drift.
+    function assTime(sec) {
+        const v = Math.max(0, Number(sec) || 0);
+        const h = Math.floor(v / 3600);
+        const m = Math.floor((v % 3600) / 60);
+        const s = Math.floor(v % 60);
+        const cs = Math.round((v - Math.floor(v)) * 100);
+        return `${h}:${pad(m)}:${pad(s)}.${pad(cs > 99 ? 99 : cs)}`;
+    }
+
+    function generateASS() {
+        const header = [
+            '[Script Info]', 'ScriptType: v4.00+', 'PlayResX: 1920', 'PlayResY: 1080', '',
+            '[V4+ Styles]',
+            'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, ' +
+            'BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, ' +
+            'BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding',
+            'Style: Default,Arial,48,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,' +
+            '100,100,0,0,1,2,1,2,10,10,40,1', '',
+            '[Events]',
+            'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text', '',
+        ].join('\n');
+        const events = subtitles.map(s =>
+            `Dialogue: 0,${assTime(s.start)},${assTime(s.end)},Default,,0,0,0,,` +
+            String(s.text || '').replace(/\r?\n/g, '\\N')
+        ).join('\n');
+        return header + events + '\n';
+    }
+
     function generateContent(format) {
         if (format === 'srt') return generateSRT();
         if (format === 'json') return JSON.stringify(subtitles, null, 2);
@@ -593,6 +649,9 @@
                 `${formatTime(s.start).replace(',', '.')} --> ${formatTime(s.end).replace(',', '.')}\n${s.text}`
             ).join('\n\n');
         }
+        // 'ass' used to fall through to here and hand back SRT under an .ass
+        // filename, which no player would load.
+        if (format === 'ass') return generateASS();
         return generateSRT();
     }
 
@@ -608,7 +667,14 @@
 
     function setStatus(type, text) {
         els.statusText.textContent = text;
-        els.statusText.className = type === 'processing' ? 'status-processing' : '';
+        // 'error' used to fall to '' — no class at all — so a failure rendered
+        // in the same muted colour as idle text at the very bottom of the
+        // page, which is the least prominent place on screen for the one
+        // message the user has to read.
+        els.statusText.className =
+            type === 'processing' ? 'status-processing'
+            : type === 'error' ? 'status-error'
+            : type === 'success' ? 'status-success' : '';
     }
 
     // ═══ Init ═══
